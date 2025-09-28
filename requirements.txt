@@ -1,0 +1,2 @@
+# Không cần dependencies phức tạp
+# Chỉ cần tkinter (có sẵn với Python)
