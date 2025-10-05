@@ -116,3 +116,20 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Ultralytics/YOLO outputs
+runs/
+
+# Large media files (keep input.mp4 if checked in)
+*.mp4
+*.avi
+*.mov
+*.mkv
+!input.mp4
+
+# Generated result files
+result_count.json
+
+# Node (if ever used)
+node_modules/
+package-lock.json

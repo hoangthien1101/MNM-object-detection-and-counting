@@ -1,13 +1,9 @@
-#!/usr/bin/env python3
-"""
-Simple Desktop App - Giao diện quản lý vật thể đơn giản
-Không sử dụng database, chỉ lưu trong memory
-"""
-
 import tkinter as tk
 from tkinter import ttk, messagebox
 import json
 import os
+import sys
+import subprocess
 from datetime import datetime
 
 
@@ -88,13 +84,16 @@ class SimpleObjectManager:
         control_frame.pack(side='bottom', fill='x', pady=5)
         
         self.edit_btn = ttk.Button(control_frame, text="✏️ Sửa", command=self.edit_object, state='disabled')
-        self.edit_btn.pack(side='left', padx=5)
+        self.edit_btn.pack(fill='x', padx=5, pady=2, anchor='w')
         
         self.delete_btn = ttk.Button(control_frame, text="🗑️ Xóa", command=self.delete_object, state='disabled')
-        self.delete_btn.pack(side='left', padx=5)
+        self.delete_btn.pack(fill='x', padx=5, pady=2, anchor='w')
         
         self.refresh_btn = ttk.Button(control_frame, text="🔄 Làm mới", command=self.refresh_list)
-        self.refresh_btn.pack(side='left', padx=5)
+        self.refresh_btn.pack(fill='x', padx=5, pady=2, anchor='w')
+        
+        self.start_btn = ttk.Button(control_frame, text="▶ Bắt đầu giám sát", command=self.start_monitoring)
+        self.start_btn.pack(fill='x', padx=5, pady=2, anchor='w')
         
         # Bind selection event
         self.objects_tree.bind('<<TreeviewSelect>>', self.on_object_select)
@@ -217,6 +216,16 @@ class SimpleObjectManager:
             self.edit_btn.config(state='disabled')
             self.delete_btn.config(state='disabled')
     
+    def start_monitoring(self):
+        """Khởi chạy detect_video.py và đóng ứng dụng hiện tại"""
+        try:
+            subprocess.Popen([sys.executable, 'detect_video.py'])
+        except Exception as e:
+            messagebox.showerror("Lỗi", f"Không thể khởi chạy giám sát: {e}")
+            return
+        # Đóng ứng dụng sau khi đã khởi chạy tiến trình mới
+        self.on_closing()
+    
     def refresh_list(self):
         """Làm mới danh sách"""
         # Clear existing items
@@ -273,4 +282,8 @@ def main():
     root.mainloop()
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        # Gracefully handle Ctrl+C in console without stack trace
+        pass
