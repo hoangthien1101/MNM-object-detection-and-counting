@@ -61,7 +61,7 @@ while True:
     # Chuẩn hóa kích thước khung hình đầu vào
     resized_frame = cv2.resize(frame, (TARGET_WIDTH, TARGET_HEIGHT), interpolation=cv2.INTER_LINEAR)
     # Detect object (không resize để giữ nguyên tỉ lệ)
-    results = model(frame, conf=0.5, verbose=False)
+    results = model(resized_frame, conf=0.5, verbose=False)
 
     # Đếm object detect được
     detected_counts = {}
