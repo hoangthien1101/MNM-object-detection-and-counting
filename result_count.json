@@ -1,12 +1,5 @@
 [
     {
-        "object_name": "bang khen",
-        "expected_count": 10,
-        "detected_count": 17,
-        "status": "thừa",
-        "difference": 7
-    },
-    {
         "object_name": "hop",
         "expected_count": 20,
         "detected_count": 18,
