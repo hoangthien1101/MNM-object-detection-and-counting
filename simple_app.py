@@ -10,6 +10,7 @@ import json
 import os
 from datetime import datetime
 
+
 class SimpleObjectManager:
     def __init__(self, root):
         self.root = root

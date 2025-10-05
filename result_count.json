@@ -1,0 +1,51 @@
+[
+    {
+        "object_name": "bang khen",
+        "expected_count": 10,
+        "detected_count": 17,
+        "status": "thừa",
+        "difference": 7
+    },
+    {
+        "object_name": "hop",
+        "expected_count": 20,
+        "detected_count": 18,
+        "status": "thiếu",
+        "difference": 2
+    },
+    {
+        "object_name": "robot",
+        "expected_count": 6,
+        "detected_count": 5,
+        "status": "thiếu",
+        "difference": 1
+    },
+    {
+        "object_name": "vali",
+        "expected_count": 6,
+        "detected_count": 0,
+        "status": "thiếu",
+        "difference": 6
+    },
+    {
+        "object_name": "sach",
+        "expected_count": 8,
+        "detected_count": 12,
+        "status": "thừa",
+        "difference": 4
+    },
+    {
+        "object_name": "cay",
+        "expected_count": 2,
+        "detected_count": 5,
+        "status": "thừa",
+        "difference": 3
+    },
+    {
+        "object_name": "hastag",
+        "expected_count": 4,
+        "detected_count": 4,
+        "status": "đủ",
+        "difference": 0
+    }
+]
