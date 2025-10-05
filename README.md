@@ -159,16 +159,3 @@ python3 --version
 4. Push to branch
 5. Tạo Pull Request
 
-## 📄 License
-
-MIT License - xem file LICENSE để biết thêm chi tiết.
-
-## 📞 Hỗ trợ
-
-Nếu gặp vấn đề, vui lòng tạo issue trên GitHub hoặc liên hệ:
-- Email: [your-email]
-- GitHub: [your-github]
-
----
-
-**Chúc bạn sử dụng thành công! 🎉**
