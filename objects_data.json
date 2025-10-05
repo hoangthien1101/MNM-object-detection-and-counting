@@ -1,12 +1,5 @@
 [
   {
-    "id": 4,
-    "name": "Bang Khen",
-    "expected_count": 10,
-    "description": "",
-    "created_at": "04/10/2025 15:49:20"
-  },
-  {
     "id": 2,
     "name": "Hop",
     "expected_count": 20,
