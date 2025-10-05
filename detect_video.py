@@ -9,10 +9,14 @@ from ultralytics import YOLO
 
 # ==== CẤU HÌNH ====
 MODEL_PATH = "model/best5n.pt"           # file model YOLO đã train
-VIDEO_PATH = "input.mp4"          # video input
-OUTPUT_PATH = "output.mp4"        # video output
-JSON_PATH = "objects_data.json"   # file JSON chứa object & số lượng mong muốn
-RESULT_JSON_PATH = "result_count.json"  # file JSON xuất kết quả
+VIDEO_PATH = "input.mp4"                 # video input
+OUTPUT_PATH = "output.mp4"               # video output
+JSON_PATH = "objects_data.json"          # file JSON chứa object & số lượng mong muốn
+RESULT_JSON_PATH = "result_count.json"   # file JSON xuất kết quả
+
+# Kích thước chuẩn hóa khung hình đầu vào
+TARGET_WIDTH = 1080
+TARGET_HEIGHT = 720
 
 # ==== LOAD MODEL ====
 model = YOLO(MODEL_PATH)
@@ -36,10 +40,11 @@ height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 fps_input = cap.get(cv2.CAP_PROP_FPS)
 total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 print(f"Video input: {width}x{height}, {fps_input} FPS, {total_frames} frames")
+print(f"Frames will be resized to: {TARGET_WIDTH}x{TARGET_HEIGHT}")
 
-# Lưu video output
+# Lưu video output với kích thước chuẩn hóa
 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-out = cv2.VideoWriter(OUTPUT_PATH, fourcc, fps_input, (width, height))
+out = cv2.VideoWriter(OUTPUT_PATH, fourcc, fps_input, (TARGET_WIDTH, TARGET_HEIGHT))
 
 # ==== Biến lưu kết quả cuối cùng ====
 final_detected_counts = {}
@@ -55,8 +60,11 @@ while True:
     frame_idx += 1
     start_time = time.time()
 
-    # Detect object (không resize để giữ nguyên tỉ lệ)
-    results = model(frame, conf=0.5, verbose=False)
+    # Chuẩn hóa kích thước khung hình đầu vào
+    resized_frame = cv2.resize(frame, (TARGET_WIDTH, TARGET_HEIGHT), interpolation=cv2.INTER_LINEAR)
+
+    # Detect object trên khung hình đã chuẩn hóa
+    results = model(resized_frame, conf=0.5, verbose=False)
 
     # Đếm object detect được
     detected_counts = {}
