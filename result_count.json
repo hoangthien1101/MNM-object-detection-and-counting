@@ -2,16 +2,16 @@
     {
         "object_name": "hop",
         "expected_count": 20,
-        "detected_count": 18,
+        "detected_count": 16,
         "status": "thiếu",
-        "difference": 2
+        "difference": 4
     },
     {
         "object_name": "robot",
         "expected_count": 6,
-        "detected_count": 5,
-        "status": "thiếu",
-        "difference": 1
+        "detected_count": 6,
+        "status": "đủ",
+        "difference": 0
     },
     {
         "object_name": "vali",
@@ -23,22 +23,22 @@
     {
         "object_name": "sach",
         "expected_count": 8,
-        "detected_count": 12,
+        "detected_count": 10,
         "status": "thừa",
-        "difference": 4
+        "difference": 2
     },
     {
         "object_name": "cay",
         "expected_count": 2,
-        "detected_count": 5,
+        "detected_count": 3,
         "status": "thừa",
-        "difference": 3
+        "difference": 1
     },
     {
         "object_name": "hastag",
         "expected_count": 4,
-        "detected_count": 4,
-        "status": "đủ",
-        "difference": 0
+        "detected_count": 2,
+        "status": "thiếu",
+        "difference": 2
     }
 ]

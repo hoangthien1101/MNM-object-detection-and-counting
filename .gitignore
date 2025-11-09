@@ -127,8 +127,8 @@ runs/
 *.mkv
 !input.mp4
 
-# Generated result files
-result_count.json
+# Generated result files (optional - uncomment if you don't want to track)
+# result_count.json
 
 # Node (if ever used)
 node_modules/
