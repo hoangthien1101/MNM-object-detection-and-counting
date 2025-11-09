@@ -304,7 +304,7 @@ Project này được phát triển cho mục đích học tập và nghiên c�
 
 **Phiên bản:** 1.0  
 **Cập nhật:** 2025  
-**Tác giả:** DetectB501 Team
+**Tác giả:** 5N Team
 
 ---
 
