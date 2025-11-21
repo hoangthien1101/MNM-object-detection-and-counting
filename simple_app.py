@@ -35,10 +35,20 @@ class SimpleObjectManager:
         self.expected_objects = {}
         self.update_expected_objects()
         
+        # Biến cho mượn/trả vật thể
+        self.borrow_records = []
+        self.borrow_tree = None
+        self.borrow_return_btn = None
+        self.borrow_file = "borrow_records.json"
+        self.load_borrow_data()
+        
+        # Chuẩn hoá ID sau khi đã load cả objects và borrow_records
+        self.normalize_object_ids()
+        
         # Biến cho Telegram
         self.telegram_enabled = False
-        self.telegram_bot_token = "7729812653:AAH8aKKVOeLEHMA6ri7noJ7dULhg1bQKaeo"
-        self.telegram_chat_id = "-4853323997"
+        self.telegram_bot_token = "8483157815:AAFazLwGgzjUCR1l99SeNpFagXq0PrvySKM"
+        self.telegram_chat_id = "-5064417328"
         self.last_telegram_send_time = 0
         self.last_detected_counts = {}
         self.telegram_cooldown = 300  # 5 phút cooldown mặc định
@@ -72,6 +82,11 @@ class SimpleObjectManager:
         self.tab2 = ttk.Frame(self.notebook)
         self.notebook.add(self.tab2, text="🎥 Nhận diện video")
         self.create_tab2_widgets()
+        
+        # Tab 3: Mượn/Trả vật thể
+        self.tab3 = ttk.Frame(self.notebook)
+        self.notebook.add(self.tab3, text="🔄 Mượn/Trả vật thể")
+        self.create_tab3_widgets()
     
     def create_tab1_widgets(self):
         """Tạo giao diện Tab 1: Quản lý vật thể"""
@@ -230,6 +245,81 @@ class SimpleObjectManager:
         self.result_text.pack(side='left', fill='both', expand=True)
         result_scrollbar.pack(side='right', fill='y')
     
+    def create_tab3_widgets(self):
+        """Tạo giao diện Tab 3: Mượn/Trả vật thể"""
+        main_frame = ttk.Frame(self.tab3)
+        main_frame.pack(fill='both', expand=True, padx=10, pady=5)
+
+        # Khối mượn vật thể
+        borrow_frame = ttk.LabelFrame(main_frame, text="Mượn vật thể")
+        borrow_frame.pack(fill='x', padx=5, pady=5)
+
+        ttk.Label(borrow_frame, text="Vật thể:").grid(row=0, column=0, sticky='w', padx=5, pady=5)
+        self.borrow_object_var = tk.StringVar()
+        object_names = [obj['name'] for obj in self.objects]
+        self.borrow_object_combo = ttk.Combobox(
+            borrow_frame, textvariable=self.borrow_object_var, values=object_names, state='readonly', width=30
+        )
+        self.borrow_object_combo.grid(row=0, column=1, padx=5, pady=5)
+
+        ttk.Label(borrow_frame, text="Số lượng:").grid(row=0, column=2, sticky='w', padx=5, pady=5)
+        self.borrow_quantity_var = tk.IntVar(value=1)
+        ttk.Spinbox(borrow_frame, from_=1, to=100, textvariable=self.borrow_quantity_var, width=10).grid(
+            row=0, column=3, padx=5, pady=5
+        )
+
+        ttk.Label(borrow_frame, text="Người mượn:").grid(row=1, column=0, sticky='w', padx=5, pady=5)
+        self.borrower_name_var = tk.StringVar()
+        ttk.Entry(borrow_frame, textvariable=self.borrower_name_var, width=30).grid(
+            row=1, column=1, padx=5, pady=5
+        )
+
+        ttk.Label(borrow_frame, text="Ghi chú:").grid(row=1, column=2, sticky='w', padx=5, pady=5)
+        self.borrow_note_var = tk.StringVar()
+        ttk.Entry(borrow_frame, textvariable=self.borrow_note_var, width=30).grid(
+            row=1, column=3, padx=5, pady=5
+        )
+
+        ttk.Button(borrow_frame, text="📦 Mượn", command=self.borrow_object).grid(
+            row=2, column=0, columnspan=4, pady=10
+        )
+
+        # Danh sách mượn
+        list_frame = ttk.LabelFrame(main_frame, text="Danh sách mượn/trả")
+        list_frame.pack(fill='both', expand=True, padx=5, pady=5)
+
+        columns = ("ID", "Vật thể", "Số lượng", "Người mượn", "Ngày mượn", "Ghi chú", "Trạng thái")
+        self.borrow_tree = ttk.Treeview(list_frame, columns=columns, show='headings', height=12)
+        for col in columns:
+            self.borrow_tree.heading(col, text=col)
+            if col == "Ghi chú":
+                self.borrow_tree.column(col, width=180)
+            elif col == "Trạng thái":
+                self.borrow_tree.column(col, width=160)
+            else:
+                self.borrow_tree.column(col, width=110)
+        self.borrow_tree.pack(side='left', fill='both', expand=True)
+
+        scrollbar = ttk.Scrollbar(list_frame, orient='vertical', command=self.borrow_tree.yview)
+        self.borrow_tree.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side='right', fill='y')
+
+        # Điều khiển trả
+        control_frame = ttk.Frame(main_frame)
+        control_frame.pack(fill='x', padx=5, pady=5)
+
+        self.borrow_return_btn = ttk.Button(
+            control_frame, text="↩️ Đánh dấu đã trả", command=self.return_borrowed_object, state='disabled'
+        )
+        self.borrow_return_btn.pack(side='left', padx=5)
+
+        ttk.Button(control_frame, text="🔄 Làm mới", command=self.refresh_borrow_list).pack(side='left', padx=5)
+        
+        ttk.Button(control_frame, text="🧹 Xóa lịch sử", command=self.clear_borrow_history).pack(side='left', padx=5)
+
+        self.borrow_tree.bind('<<TreeviewSelect>>', self.on_borrow_select)
+        self.refresh_borrow_list()
+    
     def add_object(self):
         """Thêm vật thể mới"""
         name = self.name_var.get().strip()
@@ -242,7 +332,7 @@ class SimpleObjectManager:
         
         # Tạo object mới
         new_object = {
-            'id': len(self.objects) + 1,
+            'id': self.get_next_object_id(),
             'name': name,
             'expected_count': count,
             'description': description,
@@ -333,8 +423,12 @@ class SimpleObjectManager:
         if messagebox.askyesno("Xác nhận", f"Bạn có chắc muốn xóa vật thể '{values[1]}'?"):
             # Xóa object khỏi list
             self.objects = [o for o in self.objects if o['id'] != object_id]
+            # Chuẩn hoá lại ID sau khi xóa (1, 2, 3, ...)
+            self.normalize_object_ids()
             self.save_data()
+            self.save_borrow_data()  # Lưu lại borrow_records với object_id đã cập nhật
             self.refresh_list()
+            self.refresh_borrow_list()
             self.update_expected_objects()  # Cập nhật cho tab 2
             messagebox.showinfo("Thành công", "Đã xóa vật thể!")
     
@@ -355,6 +449,8 @@ class SimpleObjectManager:
                 with open('objects_data.json', 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     self.expected_objects = {obj["name"].lower(): obj["expected_count"] for obj in data}
+                    if hasattr(self, 'borrow_object_combo') and self.borrow_object_combo:
+                        self.borrow_object_combo['values'] = [obj["name"] for obj in data]
         except Exception as e:
             print(f"Lỗi đọc expected objects: {e}")
             self.expected_objects = {}
@@ -375,6 +471,187 @@ class SimpleObjectManager:
             self.telegram_status_label.config(text="Telegram: Bật", foreground='green')
         else:
             self.telegram_status_label.config(text="Telegram: Tắt", foreground='gray')
+
+    def on_borrow_select(self, event):
+        """Kích hoạt nút trả khi chọn bản ghi"""
+        selection = self.borrow_tree.selection()
+        if not selection:
+            self.borrow_return_btn.config(state='disabled')
+            return
+
+        item = self.borrow_tree.item(selection[0])
+        borrow_id = item['values'][0]
+        record = next((r for r in self.borrow_records if r['id'] == borrow_id), None)
+        if record and not record.get('returned', False):
+            self.borrow_return_btn.config(state='normal')
+        else:
+            self.borrow_return_btn.config(state='disabled')
+
+    def refresh_borrow_list(self):
+        """Làm mới danh sách mượn/trả"""
+        if not self.borrow_tree:
+            return
+
+        for item in self.borrow_tree.get_children():
+            self.borrow_tree.delete(item)
+
+        for record in sorted(self.borrow_records, key=lambda r: r['id'], reverse=True):
+            status = "Đang mượn"
+            if record.get('returned', False):
+                returned_at = record.get('returned_at') or ""
+                status = f"Đã trả ({returned_at})" if returned_at else "Đã trả"
+
+            self.borrow_tree.insert(
+                '',
+                'end',
+                values=(
+                    record['id'],
+                    record['object_name'],
+                    record['quantity'],
+                    record.get('borrower', ''),
+                    record.get('borrowed_at', ''),
+                    record.get('notes', ''),
+                    status
+                )
+            )
+
+        self.borrow_return_btn.config(state='disabled')
+
+    def borrow_object(self):
+        """Xử lý mượn vật thể"""
+        object_name = self.borrow_object_var.get().strip()
+        borrower = self.borrower_name_var.get().strip()
+        quantity = self.borrow_quantity_var.get()
+        notes = self.borrow_note_var.get().strip()
+
+        if not object_name:
+            messagebox.showerror("Lỗi", "Vui lòng chọn vật thể muốn mượn!")
+            return
+
+        if quantity <= 0:
+            messagebox.showerror("Lỗi", "Số lượng mượn phải lớn hơn 0!")
+            return
+
+        obj = next((o for o in self.objects if o['name'].lower() == object_name.lower()), None)
+        if not obj:
+            messagebox.showerror("Lỗi", "Không tìm thấy vật thể trong danh sách!")
+            return
+
+        available = obj.get('expected_count', 0)
+        if quantity > available:
+            messagebox.showerror(
+                "Lỗi",
+                f"Số lượng còn lại của '{obj['name']}' chỉ còn {available}. Không thể mượn {quantity}!"
+            )
+            return
+
+        if not borrower:
+            if not messagebox.askyesno("Xác nhận", "Bạn chưa nhập tên người mượn. Vẫn tiếp tục?"):
+                return
+
+        record = {
+            "id": self.get_next_borrow_id(),
+            "object_id": obj['id'],
+            "object_name": obj['name'],
+            "quantity": quantity,
+            "borrower": borrower,
+            "notes": notes,
+            "borrowed_at": datetime.now().strftime('%d/%m/%Y %H:%M:%S'),
+            "returned": False,
+            "returned_at": None
+        }
+
+        self.borrow_records.append(record)
+        obj['expected_count'] = available - quantity
+
+        self.save_data()
+        self.save_borrow_data()
+        self.refresh_list()
+        self.refresh_borrow_list()
+        self.update_expected_objects()
+
+        messagebox.showinfo("Thành công", f"Đã ghi nhận mượn {quantity} '{obj['name']}'!")
+
+        self.borrow_quantity_var.set(1)
+        self.borrow_note_var.set('')
+
+    def return_borrowed_object(self):
+        """Đánh dấu trả vật thể"""
+        selection = self.borrow_tree.selection()
+        if not selection:
+            return
+
+        item = self.borrow_tree.item(selection[0])
+        borrow_id = item['values'][0]
+        record = next((r for r in self.borrow_records if r['id'] == borrow_id), None)
+
+        if not record:
+            messagebox.showwarning("Thông báo", "Không tìm thấy bản ghi mượn.")
+            return
+
+        if record.get('returned', False):
+            messagebox.showinfo("Thông báo", "Bản ghi này đã được trả trước đó.")
+            return
+
+        obj = next((o for o in self.objects if o['id'] == record['object_id']), None)
+
+        if not messagebox.askyesno(
+            "Xác nhận",
+            f"Đánh dấu '{record['object_name']}' (x{record['quantity']}) đã được trả?"
+        ):
+            return
+
+        record['returned'] = True
+        record['returned_at'] = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+
+        if obj:
+            obj['expected_count'] = obj.get('expected_count', 0) + record['quantity']
+
+        self.save_data()
+        self.save_borrow_data()
+        self.refresh_list()
+        self.refresh_borrow_list()
+        self.update_expected_objects()
+
+        messagebox.showinfo("Thành công", "Đã đánh dấu trả vật thể!")
+    
+    def clear_borrow_history(self):
+        """Xóa toàn bộ lịch sử mượn/trả"""
+        if not self.borrow_records:
+            messagebox.showinfo("Thông báo", "Không có lịch sử mượn/trả để xóa.")
+            return
+        
+        # Đếm số bản ghi đang mượn (chưa trả)
+        outstanding = [record for record in self.borrow_records if not record.get('returned', False)]
+        outstanding_count = len(outstanding)
+        
+        if outstanding_count > 0:
+            msg = f"Bạn có {outstanding_count} vật thể đang mượn chưa trả.\n"
+            msg += "Nếu xóa lịch sử, số lượng các vật thể này sẽ được hoàn trả.\n\n"
+            msg += "Bạn có chắc muốn xóa toàn bộ lịch sử mượn/trả?"
+        else:
+            msg = "Bạn có chắc muốn xóa toàn bộ lịch sử mượn/trả?"
+        
+        if not messagebox.askyesno("Xác nhận", msg):
+            return
+        
+        # Hoàn trả số lượng cho các vật thể đang mượn
+        for record in outstanding:
+            obj = next((o for o in self.objects if o['id'] == record.get('object_id')), None)
+            if obj:
+                obj['expected_count'] = obj.get('expected_count', 0) + record['quantity']
+        
+        # Xóa toàn bộ lịch sử
+        self.borrow_records = []
+        
+        # Lưu lại dữ liệu
+        self.save_data()
+        self.save_borrow_data()
+        self.refresh_list()
+        self.refresh_borrow_list()
+        self.update_expected_objects()
+        
+        messagebox.showinfo("Thành công", "Đã xóa toàn bộ lịch sử mượn/trả!")
     
     def config_telegram(self):
         """Cấu hình Telegram bot token và chat ID"""
@@ -799,6 +1076,32 @@ class SimpleObjectManager:
                 obj['description'],
                 obj['created_at']
             ))
+
+    def get_next_borrow_id(self):
+        """Sinh ID mới cho bản ghi mượn"""
+        if not self.borrow_records:
+            return 1
+        return max(record['id'] for record in self.borrow_records) + 1
+
+    def save_borrow_data(self):
+        """Lưu danh sách mượn ra file"""
+        try:
+            with open(self.borrow_file, 'w', encoding='utf-8') as f:
+                json.dump(self.borrow_records, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"Lỗi lưu borrow data: {e}")
+
+    def load_borrow_data(self):
+        """Tải danh sách mượn từ file"""
+        try:
+            if os.path.exists(self.borrow_file):
+                with open(self.borrow_file, 'r', encoding='utf-8') as f:
+                    self.borrow_records = json.load(f)
+            else:
+                self.borrow_records = []
+        except Exception as e:
+            print(f"Lỗi tải borrow data: {e}")
+            self.borrow_records = []
     
     def save_data(self):
         """Lưu dữ liệu vào file JSON"""
@@ -819,6 +1122,32 @@ class SimpleObjectManager:
         except Exception as e:
             print(f"Lỗi tải dữ liệu: {e}")
             self.objects = []
+    
+    def normalize_object_ids(self):
+        """Đảm bảo ID vật thể là số nguyên dương và duy nhất, đồng bộ lịch sử mượn"""
+        if not self.objects:
+            return
+        
+        # Tạo mapping từ tên vật thể sang ID mới (1, 2, 3, ...)
+        name_to_new_id = {}
+        for index, obj in enumerate(self.objects, start=1):
+            obj['id'] = index
+            name_to_new_id[str(obj.get('name', '')).lower()] = index
+        
+        # Cập nhật object_id trong borrow_records dựa trên tên vật thể
+        if self.borrow_records:
+            for record in self.borrow_records:
+                object_name = str(record.get('object_name', '')).lower()
+                if object_name in name_to_new_id:
+                    record['object_id'] = name_to_new_id[object_name]
+    
+    def get_next_object_id(self):
+        """Sinh ID mới duy nhất cho vật thể"""
+        self.normalize_object_ids()
+        if not self.objects:
+            return 1
+        max_id = max(obj.get('id', 0) for obj in self.objects)
+        return max_id + 1
     
     def on_closing(self):
         """Xử lý khi đóng ứng dụng"""
