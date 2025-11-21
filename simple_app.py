@@ -56,6 +56,13 @@ class SimpleObjectManager:
         self.last_periodic_send_time = 0
         self.telegram_send_on_issue = True  # Gửi ngay khi có vấn đề
         self.telegram_send_periodic = True  # Gửi định kỳ
+        # Vùng ROI (Region of Interest) để chỉ nhận diện trong vùng này
+        # roi_canvas_coords: (x1, y1, x2, y2) in canvas coordinates (displayed image area)
+        # roi_frame_coords: (x1, y1, x2, y2) in current frame coordinates (same space as model outputs)
+        self.roi_canvas_coords = None
+        self.roi_frame_coords = None
+        self.roi_rect_id = None
+        self.drawing_roi = False
         
         # Tạo giao diện
         self.create_widgets()
@@ -173,7 +180,7 @@ class SimpleObjectManager:
         ttk.Radiobutton(source_frame, text="File video", variable=self.video_source_var, 
                        value="file").pack(side='left', padx=5)
         
-        self.video_file_var = tk.StringVar(value="input.mp4")
+        self.video_file_var = tk.StringVar(value="input2.mp4")
         ttk.Entry(source_frame, textvariable=self.video_file_var, width=30).pack(side='left', padx=5)
         ttk.Button(source_frame, text="📁 Chọn file", 
                   command=self.browse_video_file).pack(side='left', padx=5)
@@ -223,6 +230,10 @@ class SimpleObjectManager:
         # Canvas để hiển thị video (kích thước nhỏ hơn)
         self.video_canvas = tk.Canvas(video_frame, bg='black', width=640, height=360)
         self.video_canvas.pack(fill='both', expand=True, padx=5, pady=5)
+        # Bind canvas mouse events for ROI drawing
+        self.video_canvas.bind('<ButtonPress-1>', self.on_canvas_button_press)
+        self.video_canvas.bind('<B1-Motion>', self.on_canvas_motion)
+        self.video_canvas.bind('<ButtonRelease-1>', self.on_canvas_button_release)
         
         # Frame thông tin (bên phải)
         info_frame = ttk.LabelFrame(main_paned, text="Kết quả nhận diện")
@@ -232,6 +243,19 @@ class SimpleObjectManager:
         self.info_label = ttk.Label(info_frame, text="FPS: 0.00 | Chưa bắt đầu nhận diện", 
                                    font=('Arial', 10, 'bold'))
         self.info_label.pack(padx=5, pady=5)
+
+        # ROI controls (draw / clear)
+        roi_control_frame = ttk.Frame(info_frame)
+        roi_control_frame.pack(fill='x', padx=5, pady=2)
+
+        self.draw_roi_btn = ttk.Button(roi_control_frame, text="✏️ Vẽ vùng ROI", command=self.start_draw_roi)
+        self.draw_roi_btn.pack(side='left', padx=5)
+
+        self.clear_roi_btn = ttk.Button(roi_control_frame, text="❌ Xóa vùng ROI", command=self.clear_roi)
+        self.clear_roi_btn.pack(side='left', padx=5)
+
+        self.roi_status_label = ttk.Label(roi_control_frame, text="ROI: Không", foreground='gray')
+        self.roi_status_label.pack(side='left', padx=8)
         
         # Text widget hiển thị kết quả đếm (lớn hơn)
         result_frame = ttk.Frame(info_frame)
@@ -811,9 +835,52 @@ class SimpleObjectManager:
             # Detect objects
             results = self.model(resized_frame, conf=0.5, verbose=False)
             
-            # Đếm objects
+            # Đếm objects (chỉ chấp nhận detection có độ tin cậy > 0.5)
             frame_detected_counts = {}
             for box in results[0].boxes:
+                # Lấy giá trị confidence một cách an toàn (box.conf có thể là scalar hoặc mảng/tensor)
+                conf = None
+                try:
+                    conf = float(box.conf)
+                except Exception:
+                    try:
+                        conf = float(box.conf[0])
+                    except Exception:
+                        conf = None
+
+                # Bỏ qua các detection không có confidence hợp lệ hoặc <= 0.5
+                if conf is None or conf <= 0.5:
+                    continue
+
+                # Lấy tọa độ bbox (xyxy) một cách linh hoạt
+                try:
+                    xyxy = box.xyxy[0]
+                    x1, y1, x2, y2 = [float(v) for v in xyxy]
+                except Exception:
+                    try:
+                        # đôi khi .xyxy là list/array
+                        x1, y1, x2, y2 = [float(v) for v in box.xyxy]
+                    except Exception:
+                        try:
+                            # fallback dùng xywh
+                            xywh = box.xywh[0]
+                            cx_b, cy_b, w_b, h_b = [float(v) for v in xywh]
+                            x1 = cx_b - w_b / 2.0
+                            y1 = cy_b - h_b / 2.0
+                            x2 = cx_b + w_b / 2.0
+                            y2 = cy_b + h_b / 2.0
+                        except Exception:
+                            # nếu không lấy được tọa độ, bỏ qua
+                            continue
+
+                # Nếu có ROI, chỉ đếm khi tâm bbox nằm trong ROI (ROI tính theo frame coords)
+                if self.roi_frame_coords:
+                    rx1, ry1, rx2, ry2 = self.roi_frame_coords
+                    cx_box = (x1 + x2) / 2.0
+                    cy_box = (y1 + y2) / 2.0
+                    if not (rx1 <= cx_box <= rx2 and ry1 <= cy_box <= ry2):
+                        continue
+
                 cls_id = int(box.cls)
                 cls_name = self.model.names[cls_id].lower()
                 frame_detected_counts[cls_name] = frame_detected_counts.get(cls_name, 0) + 1
@@ -878,6 +945,50 @@ class SimpleObjectManager:
             self.video_canvas.create_image(canvas_width // 2, canvas_height // 2, 
                                       image=photo, anchor='center')
             self.video_canvas.image = photo  # Keep a reference
+            # Nếu đã có ROI được lưu ở canvas coords, vẽ lại và tính ROI theo frame coords
+            if getattr(self, 'roi_canvas_coords', None):
+                try:
+                    # Xóa id cũ nếu tồn tại (thường không vì chúng ta vừa xóa all)
+                    if getattr(self, 'roi_rect_id', None):
+                        try:
+                            self.video_canvas.delete(self.roi_rect_id)
+                        except Exception:
+                            pass
+                    x1_c, y1_c, x2_c, y2_c = self.roi_canvas_coords
+                    # vẽ rectangle trên canvas
+                    self.roi_rect_id = self.video_canvas.create_rectangle(x1_c, y1_c, x2_c, y2_c,
+                                                                            outline='red', width=2)
+
+                    # Tính offset của ảnh trong canvas (ảnh được căn giữa)
+                    offset_x = (canvas_width - new_w) / 2.0
+                    offset_y = (canvas_height - new_h) / 2.0
+
+                    # Chuyển toạ độ canvas -> toạ độ ảnh (resized frame)
+                    img_x1 = x1_c - offset_x
+                    img_y1 = y1_c - offset_y
+                    img_x2 = x2_c - offset_x
+                    img_y2 = y2_c - offset_y
+
+                    # Kiểm tra overlap với ảnh
+                    if img_x2 <= 0 or img_y2 <= 0 or img_x1 >= new_w or img_y1 >= new_h:
+                        # ROI không nằm trong vùng ảnh
+                        self.roi_frame_coords = None
+                    else:
+                        ix1 = max(0.0, img_x1)
+                        iy1 = max(0.0, img_y1)
+                        ix2 = min(float(new_w), img_x2)
+                        iy2 = min(float(new_h), img_y2)
+
+                        # Chuyển về toạ độ frame gốc (trước khi resize to new_w/new_h)
+                        fx1 = int(max(0, min(frame_w - 1, ix1 / scale)))
+                        fy1 = int(max(0, min(frame_h - 1, iy1 / scale)))
+                        fx2 = int(max(0, min(frame_w - 1, ix2 / scale)))
+                        fy2 = int(max(0, min(frame_h - 1, iy2 / scale)))
+
+                        self.roi_frame_coords = (fx1, fy1, fx2, fy2)
+                except Exception:
+                    # Nếu có lỗi khi tính toán ROI thì đặt thành None
+                    self.roi_frame_coords = None
         
         # Cập nhật thông tin
         info_text = f"FPS: {self.fps:.1f} | Frame: {self.frame_count}"
@@ -914,6 +1025,75 @@ class SimpleObjectManager:
         self.result_text.delete('1.0', tk.END)
         self.result_text.insert('1.0', result_text)
         self.result_text.config(state='disabled')
+
+    # ----------------- ROI drawing handlers -----------------
+    def start_draw_roi(self):
+        """Bắt đầu chế độ vẽ ROI (một lần): click-drag-release để vẽ vùng"""
+        # kích hoạt vẽ, xóa roi cũ
+        self.drawing_roi = True
+        self.roi_canvas_coords = None
+        self.roi_frame_coords = None
+        if self.roi_rect_id:
+            try:
+                self.video_canvas.delete(self.roi_rect_id)
+            except Exception:
+                pass
+            self.roi_rect_id = None
+        self.roi_status_label.config(text="ROI: Vẽ...", foreground='orange')
+
+    def clear_roi(self):
+        """Xoá vùng ROI hiện tại"""
+        self.roi_canvas_coords = None
+        self.roi_frame_coords = None
+        if getattr(self, 'roi_rect_id', None):
+            try:
+                self.video_canvas.delete(self.roi_rect_id)
+            except Exception:
+                pass
+            self.roi_rect_id = None
+        self.roi_status_label.config(text="ROI: Không", foreground='gray')
+
+    def on_canvas_button_press(self, event):
+        if not getattr(self, 'drawing_roi', False):
+            return
+        # bắt đầu vẽ
+        self._roi_start_x = event.x
+        self._roi_start_y = event.y
+        if self.roi_rect_id:
+            try:
+                self.video_canvas.delete(self.roi_rect_id)
+            except Exception:
+                pass
+            self.roi_rect_id = None
+        self.roi_rect_id = self.video_canvas.create_rectangle(self._roi_start_x, self._roi_start_y,
+                                                               event.x, event.y, outline='red', width=2)
+
+    def on_canvas_motion(self, event):
+        if not getattr(self, 'drawing_roi', False) or not getattr(self, '_roi_start_x', None):
+            return
+        x0 = self._roi_start_x
+        y0 = self._roi_start_y
+        x1 = event.x
+        y1 = event.y
+        if self.roi_rect_id:
+            try:
+                self.video_canvas.coords(self.roi_rect_id, x0, y0, x1, y1)
+            except Exception:
+                pass
+
+    def on_canvas_button_release(self, event):
+        if not getattr(self, 'drawing_roi', False):
+            return
+        x0 = self._roi_start_x
+        y0 = self._roi_start_y
+        x1 = event.x
+        y1 = event.y
+        xa, xb = sorted([x0, x1])
+        ya, yb = sorted([y0, y1])
+        self.roi_canvas_coords = (xa, ya, xb, yb)
+        # kết thúc chế độ vẽ (một lần)
+        self.drawing_roi = False
+        self.roi_status_label.config(text="ROI: Đã đặt", foreground='green')
     
     def save_result_json(self):
         """Lưu kết quả vào file JSON"""
