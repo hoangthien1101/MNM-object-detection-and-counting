@@ -41,7 +41,6 @@ detection_images/
 *.bmp
 
 # YOLO Models
-*.pt
 *.onnx
 *.engine
 
@@ -121,7 +120,6 @@ dmypy.json
 runs/
 
 # Large media files (keep input.mp4 if checked in)
-*.mp4
 *.avi
 *.mov
 *.mkv
