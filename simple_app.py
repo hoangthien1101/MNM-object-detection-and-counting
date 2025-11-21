@@ -47,8 +47,8 @@ class SimpleObjectManager:
         
         # Biến cho Telegram
         self.telegram_enabled = False
-        self.telegram_bot_token = "7729812653:AAH8aKKVOeLEHMA6ri7noJ7dULhg1bQKaeo"
-        self.telegram_chat_id = "-4853323997"
+        self.telegram_bot_token = "8483157815:AAFazLwGgzjUCR1l99SeNpFagXq0PrvySKM"
+        self.telegram_chat_id = "-5064417328"
         self.last_telegram_send_time = 0
         self.last_detected_counts = {}
         self.telegram_cooldown = 300  # 5 phút cooldown mặc định
