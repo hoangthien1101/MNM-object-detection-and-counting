@@ -11,7 +11,7 @@ Hệ thống giám sát thông minh sử dụng công nghệ YOLO để nhận d
 ### 🎨 Giao diện Người dùng Thân thiện
 - **Tab Quản lý Vật thể**: Thêm, sửa, xóa danh sách vật thể cần theo dõi
 - **Tab Nhận diện Video**: Xem video real-time với kết quả nhận diện trực tiếp
-- Hiển thị kết quả đếm với biểu tượng trực quan (✅ đủ, ❌ thiếu, ⚠️ thừa)
+- Hiển thị kết quả đếm với biểu tượng trực quan (✅ đủ, ❌ thiếu)
 
 ### 🤖 Nhận diện Thông minh
 - Nhận diện vật thể real-time từ **camera** hoặc **file video**
@@ -20,7 +20,7 @@ Hệ thống giám sát thông minh sử dụng công nghệ YOLO để nhận d
 - Hiển thị bounding boxes và FPS trên video
 
 ### 📱 Thông báo Telegram Tự động
-- **Gửi cảnh báo ngay** khi phát hiện thiếu/thừa vật thể
+- **Gửi cảnh báo ngay** khi phát hiện thiếu vật thể
 - **Báo cáo định kỳ** để theo dõi trạng thái liên tục
 - **Cooldown thông minh** để tránh spam tin nhắn
 - Gửi kèm file JSON chi tiết kết quả
@@ -153,7 +153,6 @@ chmod +x start_simple.sh
    - Kết quả đếm hiển thị ở bên phải:
      - ✅ **Đủ**: Số lượng đúng như mong đợi
      - ❌ **Thiếu**: Thiếu vật thể (hiển thị số lượng thiếu)
-     - ⚠️ **Thừa**: Thừa vật thể (hiển thị số lượng thừa)
    - FPS và số frame hiển thị ở trên
 
 5. **Dừng nhận diện:**
