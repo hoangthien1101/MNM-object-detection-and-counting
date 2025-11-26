@@ -441,7 +441,6 @@ chmod +x start_simple.sh
 - Kết quả đếm hiển thị ở bên phải:
   - ✅ Đủ: Số lượng đúng
   - ❌ Thiếu: Thiếu vật thể
-  - ⚠️ Thừa: Thừa vật thể
 - FPS và số frame hiển thị ở trên
 - Telegram tự động gửi khi:
   - Phát hiện vấn đề (nếu bật)
