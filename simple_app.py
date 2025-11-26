@@ -742,7 +742,7 @@ class SimpleObjectManager:
         
         # Load model
         try:
-            model_path = "model/best5n.pt"
+            model_path = "model/best8n.pt"
             if not os.path.exists(model_path):
                 messagebox.showerror("Lỗi", f"Không tìm thấy model tại: {model_path}")
                 return
@@ -994,20 +994,32 @@ class SimpleObjectManager:
         info_text = f"FPS: {self.fps:.1f} | Frame: {self.frame_count}"
         self.info_label.config(text=info_text)
         
+        # # Cập nhật kết quả đếm
+        # result_text = "📊 KẾT QUẢ NHẬN DIỆN:\n" + "="*50 + "\n\n"
+        # for obj_name, expected_count in self.expected_objects.items():
+        #     detected_count = self.detected_counts.get(obj_name, 0)
+        #     difference = detected_count - expected_count
+            
+        #     if difference == 0:
+        #         status = f"✅ {obj_name.upper()}: Đủ {expected_count}"
+        #     elif difference < 0:
+        #         status = f"❌ {obj_name.upper()}: Thiếu {abs(difference)} (có {detected_count}/{expected_count})"
+        #     else:
+        #         status = f"⚠️ {obj_name.upper()}: Thừa {difference} (có {detected_count}/{expected_count})"
+            
+        #     result_text += status + "\n"
         # Cập nhật kết quả đếm
         result_text = "📊 KẾT QUẢ NHẬN DIỆN:\n" + "="*50 + "\n\n"
         for obj_name, expected_count in self.expected_objects.items():
             detected_count = self.detected_counts.get(obj_name, 0)
-            difference = detected_count - expected_count
-            
-            if difference == 0:
+
+            if detected_count >= expected_count:
                 status = f"✅ {obj_name.upper()}: Đủ {expected_count}"
-            elif difference < 0:
-                status = f"❌ {obj_name.upper()}: Thiếu {abs(difference)} (có {detected_count}/{expected_count})"
             else:
-                status = f"⚠️ {obj_name.upper()}: Thừa {difference} (có {detected_count}/{expected_count})"
+                status = f"❌ {obj_name.upper()}: Thiếu {expected_count - detected_count} (có {detected_count}/{expected_count})"
             
             result_text += status + "\n"
+
         
         if not self.expected_objects:
             result_text += "⚠️ Chưa có vật thể nào được cấu hình.\n"
@@ -1211,15 +1223,16 @@ class SimpleObjectManager:
                 detected_count = self.detected_counts.get(obj_name, 0)
                 difference = detected_count - expected_count
                 
-                if difference == 0:
+                if detected_count >= expected_count:
                     emoji = "✅"
                     telegram_message += f"{emoji} <b>{obj_name.upper()}</b>: Đủ {expected_count}\n"
-                elif difference < 0:
+                else :
                     emoji = "❌"
                     telegram_message += f"{emoji} <b>{obj_name.upper()}</b>: Thiếu {abs(difference)} (có {detected_count}/{expected_count})\n"
-                else:
-                    emoji = "⚠️"
-                    telegram_message += f"{emoji} <b>{obj_name.upper()}</b>: Thừa {difference} (có {detected_count}/{expected_count})\n"
+                # else:
+                #     emoji = "⚠️"
+                #     telegram_message += f"{emoji} <b>{obj_name.upper()}</b>: Thừa {difference} (có {detected_count}/{expected_count})\n"
+
             
             telegram_message += "\n━━━━━━━━━━━━━━━━━━━━━━"
             if send_reason == "phát hiện vấn đề":

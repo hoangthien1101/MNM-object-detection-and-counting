@@ -2,9 +2,9 @@
     {
         "object_name": "hop",
         "expected_count": 14,
-        "detected_count": 15,
-        "status": "thừa",
-        "difference": 1
+        "detected_count": 14,
+        "status": "đủ",
+        "difference": 0
     },
     {
         "object_name": "vali",
@@ -16,22 +16,22 @@
     {
         "object_name": "sach",
         "expected_count": 6,
-        "detected_count": 8,
-        "status": "thừa",
-        "difference": 2
+        "detected_count": 5,
+        "status": "thiếu",
+        "difference": 1
     },
     {
         "object_name": "cay",
-        "expected_count": 3,
+        "expected_count": 2,
         "detected_count": 3,
-        "status": "đủ",
-        "difference": 0
+        "status": "thừa",
+        "difference": 1
     },
     {
         "object_name": "bang khen",
-        "expected_count": 12,
-        "detected_count": 11,
-        "status": "thiếu",
-        "difference": 1
+        "expected_count": 10,
+        "detected_count": 10,
+        "status": "đủ",
+        "difference": 0
     }
 ]

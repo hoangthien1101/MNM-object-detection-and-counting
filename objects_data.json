@@ -2,7 +2,7 @@
   {
     "id": 1,
     "name": "Hop",
-    "expected_count": 14,
+    "expected_count": 13,
     "description": "",
     "created_at": "04/10/2025 17:17:27"
   },
@@ -16,21 +16,21 @@
   {
     "id": 3,
     "name": "Sach",
-    "expected_count": 6,
+    "expected_count": 5,
     "description": "",
     "created_at": "04/10/2025 17:44:13"
   },
   {
     "id": 4,
     "name": "Cay",
-    "expected_count": 3,
+    "expected_count": 2,
     "description": "",
     "created_at": "04/10/2025 17:44:36"
   },
   {
     "id": 5,
     "name": "Bang khen",
-    "expected_count": 12,
+    "expected_count": 10,
     "description": "",
     "created_at": "21/11/2025 14:34:37"
   }
