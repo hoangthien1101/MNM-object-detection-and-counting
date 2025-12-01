@@ -755,7 +755,7 @@ class SimpleObjectManager:
         # Mở video source
         source = self.video_source_var.get()
         if source == "camera":
-            self.video_cap = cv2.VideoCapture(0)
+            self.video_cap = cv2.VideoCapture(1)
         else:
             video_path = self.video_file_var.get()
             if not os.path.exists(video_path):
